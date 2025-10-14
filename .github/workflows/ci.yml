@@ -94,7 +94,7 @@ jobs:
         run: cargo near build reproducible-wasm --manifest-path defuse/Cargo.toml
       - name: Calculate SHA-256 and prepare artifacts
         run: |
-          GIT_HASH=$(git rev-parse --short HEAD)
+          GIT_HASH=$(git rev-parse HEAD)
           SHA256=$(sha256sum target/near/defuse/defuse.wasm | awk '{print $1}')
           cp target/near/defuse/defuse.wasm defuse-${GIT_HASH}.wasm
           echo "${SHA256}" > defuse-${GIT_HASH}.sha256
