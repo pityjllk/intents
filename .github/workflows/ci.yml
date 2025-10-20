@@ -111,6 +111,7 @@ jobs:
           path: |
             defuse-${{ env.GIT_HASH }}.wasm
             defuse-${{ env.GIT_HASH }}.sha256
+          compression-level: 0
 
   tests:
     name: Tests
