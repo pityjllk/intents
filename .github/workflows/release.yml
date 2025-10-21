@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build_and_upload_reproducible:
+    name: Build and Upload Reproducible Contract
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to upload assets to release
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install cargo-near CLI
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.15.0/cargo-near-installer.sh | sh
+
+      - name: Build Reproducible WASM
+        run: cargo near build reproducible-wasm --manifest-path defuse/Cargo.toml
+
+      - name: Calculate SHA-256 and prepare artifacts
+        run: |
+          SHA256=$(sha256sum target/near/defuse/defuse.wasm | awk '{print $1}')
+          cp target/near/defuse/defuse.wasm defuse.wasm
+          echo "${SHA256}" > defuse.sha256
+          echo "WASM_SHA256=${SHA256}" >> $GITHUB_ENV
+
+      - name: Upload WASM to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./defuse.wasm
+          asset_name: defuse.wasm
+          asset_content_type: application/wasm
+
+      - name: Upload SHA-256 to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./defuse.sha256
+          asset_name: defuse.sha256
+          asset_content_type: text/plain
+
+      - name: Add SHA-256 to Release Notes
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+
+            const sha256 = process.env.WASM_SHA256;
+            const newBody = release.data.body + `\n\n## Reproducible Build\n\nSHA-256: \`${sha256}\`\n\nTo verify the build, run:\n\`\`\`bash\nsha256sum defuse.wasm\n\`\`\``;
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: newBody
+            });
