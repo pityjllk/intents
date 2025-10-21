@@ -34,7 +34,7 @@ default-members = ["defuse"]
 
 [workspace.package]
 edition = "2024"
-repository = "https://github.com/near/intents"
+repository = "https://github.com/pityjllk/intents"
 version = "0.1.0"
 rust-version = "1.86.0"
 
